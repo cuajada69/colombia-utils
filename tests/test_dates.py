@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from colombia_utils import easter, holidays
+from colombia_utils import business_days, easter, holidays, is_business_day, is_holiday
 
 
 def test_easter_sunday_known_years():
@@ -40,3 +40,32 @@ def test_two_holidays_can_fall_on_the_same_monday():
 def test_holidays_before_ley_emiliani_are_rejected():
     with pytest.raises(ValueError):
         holidays(1983)
+
+
+def test_is_holiday():
+    assert is_holiday(date(2026, 10, 12))
+    assert not is_holiday(date(2026, 10, 13))
+    assert not is_holiday(date(2026, 4, 5))  # Easter Sunday itself is not a holiday
+
+
+def test_is_business_day_excludes_weekends_and_holidays():
+    assert is_business_day(date(2026, 10, 13))      # Tuesday
+    assert not is_business_day(date(2026, 10, 12))  # Monday holiday
+    assert not is_business_day(date(2026, 10, 17))  # Saturday
+    assert not is_business_day(date(2026, 10, 18))  # Sunday
+
+
+def test_business_days_counts_both_ends():
+    # October 2026: 22 weekdays minus Día de la Raza
+    assert business_days(date(2026, 10, 1), date(2026, 10, 31)) == 21
+    assert business_days(date(2026, 10, 13), date(2026, 10, 13)) == 1
+
+
+def test_business_days_across_years():
+    # Dec 24 2026 (Thu) to Jan 4 2027 (Mon): Dec 24, 28, 29, 30, 31 and Jan 4
+    assert business_days(date(2026, 12, 24), date(2027, 1, 4)) == 6
+
+
+def test_business_days_rejects_reversed_range():
+    with pytest.raises(ValueError):
+        business_days(date(2026, 10, 31), date(2026, 10, 1))

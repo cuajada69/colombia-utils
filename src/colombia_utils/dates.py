@@ -1,6 +1,7 @@
 """Colombian public holidays (Ley 51 de 1983) and business days."""
 
 from datetime import date, timedelta
+from functools import lru_cache
 
 
 def easter(year: int) -> date:
@@ -66,3 +67,25 @@ def holidays(year: int) -> list[tuple[date, str]]:
     days += [(_next_monday(date(year, m, d)), name) for m, d, name in _MOVED]
     days += [(sunday + timedelta(days=offset), name) for offset, name in _FROM_EASTER]
     return sorted(days)
+
+
+@lru_cache(maxsize=None)
+def _holiday_dates(year: int) -> frozenset[date]:
+    return frozenset(d for d, _ in holidays(year))
+
+
+def is_holiday(d: date) -> bool:
+    """True if ``d`` is a Colombian public holiday."""
+    return d in _holiday_dates(d.year)
+
+
+def is_business_day(d: date) -> bool:
+    """True if ``d`` is a Monday to Friday that is not a public holiday."""
+    return d.weekday() < 5 and not is_holiday(d)
+
+
+def business_days(start: date, end: date) -> int:
+    """Number of business days from ``start`` to ``end``, both included."""
+    if end < start:
+        raise ValueError(f"end ({end}) is before start ({start})")
+    return sum(is_business_day(start + timedelta(days=i)) for i in range((end - start).days + 1))
